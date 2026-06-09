@@ -6,6 +6,8 @@ import type { CreateSalePayload, Product, Sale } from '../types';
 interface SaleFormValues {
   productId: string;
   quantity: number;
+  client: string;
+  payment: string;
 }
 
 export default function Sales() {
@@ -17,18 +19,20 @@ export default function Sales() {
     reset,
     formState: { errors, isSubmitting },
     watch,
-  } = useForm<SaleFormValues>({ defaultValues: { productId: '', quantity: 1 } });
+  } = useForm<SaleFormValues>({
+    defaultValues: { productId: '', quantity: 1, client: '', payment: 'Efectivo' },
+  });
 
   const selectedProductId = watch('productId');
   const selectedProduct = useMemo(
-    () => products.find((product) => product.id === selectedProductId),
+    () => products.find((product) => String(product.id) === selectedProductId),
     [products, selectedProductId]
   );
 
   const total = useMemo(() => {
-    if (!selectedProduct) return 0;
+    if (!selectedProduct || !selectedProduct.price) return 0;
     const quantity = Number(watch('quantity')) || 0;
-    return selectedProduct.price * quantity;
+    return (selectedProduct.price ?? 0) * quantity;
   }, [selectedProduct, watch('quantity')]);
 
   const loadSales = async () => {
@@ -55,20 +59,22 @@ export default function Sales() {
   }, []);
 
   const onSubmit = async (data: SaleFormValues) => {
-    if (!selectedProduct) return;
+    if (!selectedProduct || !selectedProduct.price) return;
 
     try {
-      const payload: CreateSalePayload = {
-        productId: data.productId,
-        quantity: data.quantity,
-        total: selectedProduct.price * data.quantity,
+      const payload = {
+        client: data.client,
+        total: (selectedProduct.price ?? 0) * data.quantity,
+        payment: data.payment,
+        status: 'Completada',
+        code: `VTA-${Date.now()}`,
       };
 
       await api.post('/sales', payload);
-      reset({ productId: '', quantity: 1 });
-      loadSales();
+      reset({ productId: '', quantity: 1, client: '', payment: 'Efectivo' });
+      await loadSales();
     } catch (error) {
-      console.error(error);
+      console.error('Error al registrar venta:', error);
     }
   };
 
@@ -91,12 +97,23 @@ export default function Sales() {
               >
                 <option value="">Selecciona un producto</option>
                 {products.map((product) => (
-                  <option key={product.id} value={product.id}>
+                  <option key={product.id} value={String(product.id)}>
                     {product.name}
                   </option>
                 ))}
               </select>
               {errors.productId && <p className="mt-2 text-sm text-red-600">{errors.productId.message}</p>}
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Cliente</span>
+              <input
+                type="text"
+                placeholder="Nombre del cliente"
+                {...register('client', { required: 'El cliente es obligatorio' })}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              />
+              {errors.client && <p className="mt-2 text-sm text-red-600">{errors.client.message}</p>}
             </label>
 
             <label className="block">
@@ -112,6 +129,18 @@ export default function Sales() {
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
               />
               {errors.quantity && <p className="mt-2 text-sm text-red-600">{errors.quantity.message}</p>}
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Forma de pago</span>
+              <select
+                {...register('payment')}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              >
+                <option value="Efectivo">Efectivo</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Transferencia">Transferencia</option>
+              </select>
             </label>
 
             <div className="rounded-2xl bg-slate-100 p-4 text-sm text-slate-700">
@@ -136,8 +165,8 @@ export default function Sales() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm text-slate-700">
               <thead>
                 <tr>
-                  <th className="px-3 py-2 font-medium">Producto</th>
-                  <th className="px-3 py-2 font-medium">Cantidad</th>
+                  <th className="px-3 py-2 font-medium">Cliente</th>
+                  <th className="px-3 py-2 font-medium">Pago</th>
                   <th className="px-3 py-2 font-medium">Total</th>
                   <th className="px-3 py-2 font-medium">Fecha</th>
                 </tr>
@@ -145,10 +174,10 @@ export default function Sales() {
               <tbody className="divide-y divide-slate-200">
                 {sales.map((sale) => (
                   <tr key={sale.id}>
-                    <td className="px-3 py-3">{sale.productName ?? sale.productId}</td>
-                    <td className="px-3 py-3">{sale.quantity}</td>
-                    <td className="px-3 py-3">${sale.total.toFixed(2)}</td>
-                    <td className="px-3 py-3">{sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : '-'}</td>
+                    <td className="px-3 py-3">{sale.client ?? '-'}</td>
+                    <td className="px-3 py-3">{sale.payment ?? '-'}</td>
+                    <td className="px-3 py-3">${(sale.total ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-3">{sale.date ? new Date(sale.date).toLocaleDateString() : '-'}</td>
                   </tr>
                 ))}
                 {sales.length === 0 && (

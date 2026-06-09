@@ -1,18 +1,25 @@
 export interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  quantity: number;
+  id: number | string;
+  code?: string;
+  name?: string;
+  species?: string;
+  category?: string;
+  location?: string;
+  price?: number;
+  stock?: number;
+  health?: string;
+  watered?: string;
+  image?: string;
 }
 
 export interface Sale {
-  id: string;
-  productId: string;
-  productName?: string;
-  quantity: number;
-  total: number;
-  createdAt?: string;
+  id: number | string;
+  code?: string;
+  client?: string;
+  date?: string;
+  total?: number;
+  payment?: string;
+  status?: string;
 }
 
 export interface User {
@@ -33,14 +40,22 @@ export interface CreateUserPayload {
 }
 
 export interface CreateProductPayload {
+  code?: string;
   name: string;
-  description?: string;
+  species?: string;
+  category?: string;
+  location?: string;
   price: number;
-  quantity: number;
+  stock: number;
+  health?: string;
+  watered?: string;
+  image?: string;
 }
 
 export interface CreateSalePayload {
-  productId: string;
-  quantity: number;
+  code: string;
+  client: string;
   total: number;
+  payment: string;
+  status: string;
 }

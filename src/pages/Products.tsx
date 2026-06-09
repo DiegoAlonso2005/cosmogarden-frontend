@@ -3,11 +3,28 @@ import { useForm } from 'react-hook-form';
 import api from '../api/axios';
 import type { CreateProductPayload, Product } from '../types';
 
-const defaultValues: CreateProductPayload = {
+interface ProductFormValues {
+  code: string;
+  name: string;
+  species: string;
+  category: string;
+  location: string;
+  price: number;
+  stock: number;
+  health: string;
+  watered: string;
+}
+
+const defaultValues: ProductFormValues = {
+  code: '',
   name: '',
-  description: '',
+  species: '',
+  category: 'All',
+  location: '',
   price: 0,
-  quantity: 0,
+  stock: 0,
+  health: 'Excelente',
+  watered: 'Hace 1 día',
 };
 
 export default function Products() {
@@ -18,7 +35,7 @@ export default function Products() {
     reset,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<CreateProductPayload>({ defaultValues });
+  } = useForm<ProductFormValues>({ defaultValues });
 
   const loadProducts = async () => {
     try {
@@ -33,7 +50,7 @@ export default function Products() {
     loadProducts();
   }, []);
 
-  const onSubmit = async (data: CreateProductPayload) => {
+  const onSubmit = async (data: ProductFormValues) => {
     try {
       if (selectedProduct) {
         await api.put(`/products/${selectedProduct.id}`, data);
@@ -42,28 +59,35 @@ export default function Products() {
       }
       reset(defaultValues);
       setSelectedProduct(null);
-      loadProducts();
+      await loadProducts();
     } catch (error) {
-      console.error(error);
+      console.error('Error al guardar producto:', error);
     }
   };
 
   const onEdit = (product: Product) => {
     setSelectedProduct(product);
     reset({
-      name: product.name,
-      description: product.description ?? '',
-      price: product.price,
-      quantity: product.quantity,
+      code: product.code ?? '',
+      name: product.name ?? '',
+      species: product.species ?? '',
+      category: product.category ?? 'All',
+      location: product.location ?? '',
+      price: product.price ?? 0,
+      stock: product.stock ?? 0,
+      health: product.health ?? 'Excelente',
+      watered: product.watered ?? 'Hace 1 día',
     });
   };
 
-  const onDelete = async (productId: string) => {
+  const onDelete = async (productId: number | string | undefined) => {
+    if (!productId) return;
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
     try {
       await api.delete(`/products/${productId}`);
-      loadProducts();
+      await loadProducts();
     } catch (error) {
-      console.error(error);
+      console.error('Error al eliminar producto:', error);
     }
   };
 
@@ -84,6 +108,15 @@ export default function Products() {
           <h2 className="text-xl font-semibold text-slate-900">{selectedProduct ? 'Editar producto' : 'Nuevo producto'}</h2>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <label className="block">
+              <span className="text-sm font-medium text-slate-700">Código</span>
+              <input
+                {...register('code')}
+                placeholder="VIV-001"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              />
+            </label>
+
+            <label className="block">
               <span className="text-sm font-medium text-slate-700">Nombre</span>
               <input
                 {...register('name', { required: 'El nombre es obligatorio' })}
@@ -93,10 +126,34 @@ export default function Products() {
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-700">Descripción</span>
-              <textarea
-                {...register('description')}
-                rows={3}
+              <span className="text-sm font-medium text-slate-700">Especie</span>
+              <input
+                {...register('species')}
+                placeholder="Ej: Echeveria Elegans"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Categoría</span>
+              <select
+                {...register('category')}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              >
+                <option value="All">Todas</option>
+                <option value="Interior">Interior</option>
+                <option value="Exterior">Exterior</option>
+                <option value="Arbustos">Arbustos</option>
+                <option value="Flores">Flores</option>
+                <option value="Suculentas">Suculentas</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Ubicación</span>
+              <input
+                {...register('location')}
+                placeholder="Ej: Zona A-3"
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
               />
             </label>
@@ -114,15 +171,37 @@ export default function Products() {
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-slate-700">Cantidad</span>
+                <span className="text-sm font-medium text-slate-700">Stock</span>
                 <input
                   type="number"
-                  {...register('quantity', { required: 'La cantidad es obligatoria', valueAsNumber: true })}
+                  {...register('stock', { required: 'El stock es obligatorio', valueAsNumber: true })}
                   className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
                 />
-                {errors.quantity && <p className="mt-2 text-sm text-red-600">{errors.quantity.message}</p>}
+                {errors.stock && <p className="mt-2 text-sm text-red-600">{errors.stock.message}</p>}
               </label>
             </div>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Estado de salud</span>
+              <select
+                {...register('health')}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              >
+                <option value="Excelente">Excelente</option>
+                <option value="Bueno">Bueno</option>
+                <option value="Regular">Regular</option>
+                <option value="Necesita atención">Necesita atención</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Último riego</span>
+              <input
+                {...register('watered')}
+                placeholder="Ej: Hace 2 días"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
+              />
+            </label>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <button
@@ -155,7 +234,7 @@ export default function Products() {
                 <tr>
                   <th className="px-3 py-2 font-medium">Nombre</th>
                   <th className="px-3 py-2 font-medium">Precio</th>
-                  <th className="px-3 py-2 font-medium">Cantidad</th>
+                  <th className="px-3 py-2 font-medium">Stock</th>
                   <th className="px-3 py-2 font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -163,18 +242,20 @@ export default function Products() {
                 {products.map((product) => (
                   <tr key={product.id}>
                     <td className="px-3 py-3">{product.name}</td>
-                    <td className="px-3 py-3">${product.price.toFixed(2)}</td>
-                    <td className="px-3 py-3">{product.quantity}</td>
+                    <td className="px-3 py-3">${(product.price ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-3">{product.stock ?? 0}</td>
                     <td className="px-3 py-3 space-x-2">
                       <button
+                        type="button"
                         onClick={() => onEdit(product)}
-                        className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700"
+                        className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700 transition"
                       >
                         Editar
                       </button>
                       <button
+                        type="button"
                         onClick={() => onDelete(product.id)}
-                        className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500"
+                        className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 transition"
                       >
                         Eliminar
                       </button>
